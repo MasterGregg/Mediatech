@@ -1,18 +1,26 @@
 package views;
 
+import java.awt.Dimension;
+import java.awt.Toolkit;
+
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 
 public class MainFrame extends JFrame 
-{
+{	
+	private final static int WIDTH = 1024;
+	private final static int HEIGHT = 768;
+	
 	public MainFrame()
 	{
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        //Add the ubiquitous "Hello World" label.
-        JLabel label = new JLabel("This is a Mediatech !");
-        this.getContentPane().add(label);
+        this.setTitle("Mediatech");
         
+        Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();  
+        int screenWidth = dim.width;  
+        int screenHeight = dim.height;    
+        this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        this.setLocation((screenWidth-WIDTH)/2,(screenHeight-HEIGHT)/2);  
+     
         this.pack();
         this.setVisible(true);
 	}
