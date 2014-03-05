@@ -8,5 +8,10 @@ public abstract class Action {
 		this.name = a;
 	}
 	
+	public String getName()
+	{
+		return name;
+	}
+	
 	public abstract void start();
 }

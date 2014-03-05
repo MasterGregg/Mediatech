@@ -2,8 +2,10 @@ package model;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 
 public class SQLManager 
@@ -42,6 +44,58 @@ public class SQLManager
 			e.printStackTrace();
 		}
 		return st;
+	}
+	
+	public int userID(String login, String pwd)
+	{
+		int r = -1;
+		Statement st = null;
+		ResultSet result = null;
+		
+		try 
+		{
+			st = cnx();
+			if(st == null) return -1;
+			result = (ResultSet) st.executeQuery("SELECT id FROM t_users WHERE (name="+login+" AND password="+pwd+")");
+			if(result.last() && result.getRow() == 1) r = result.getInt("id");
+			result.close();
+			st.close();
+		} catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}		
+		
+		return r;
+	}
+	
+	public boolean userCanLaunch(int userID, String actionName)
+	{
+		Statement st = null;
+		ResultSet result = null;
+		int idAction = -1;
+		boolean ok = false;
+		
+		try 
+		{
+			st = cnx();
+			if(st == null) return false;
+			// RECUPERATION ID ACTION
+			result = (ResultSet) st.executeQuery("SELECT id FROM t_actions WHERE name="+actionName);
+			if(result.last() && result.getRow() == 1) 
+			{
+				idAction = result.getInt("id");
+				
+				// ON REGARDE SI L'USER PEUT LANCER L'ACTION
+				result = (ResultSet) st.executeQuery("SELECT * FROM t_rights WHERE (id_user="+userID+"+ AND id_action="+idAction+")");
+				if(result.last() && result.getRow() == 1) ok = true;
+			}
+			result.close();
+			st.close();
+		} catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}		
+		return ok;
 	}
 	
 	/*public ArrayList<Livre> livres()

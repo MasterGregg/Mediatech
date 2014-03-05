@@ -1,35 +1,26 @@
 package model;
 
-public class Facade 
+public class Facade implements IFacade
 {	
-	private User user;
+	private SQLManager connection;
 	
 	public Facade()
 	{
-		user = null;
+		connection = new SQLManager();
 	}
 	
-	public boolean connection(String login, String pwd)
+	public boolean userExist(String login, String pwd)
 	{
-		// REQ SQL ET RECUPERATION ID
-		return true;
+		return (connection.userID(login, pwd) != -1);
 	}
 	
-	public boolean deconnection()
+	public int userID(String login, String pwd)
 	{
-		return true;
+		return connection.userID(login, pwd);
 	}
 	
-	public boolean launchAction(Action a)
+	public boolean userCanLaunchAction(int userID, Action a)
 	{
-		return true;
-	}
-	
-	public boolean isConnected(){return (user != null);}
-	
-	public static void Main(String [] args)
-	{
-		Facade f = new Facade();
-		
+		return connection.userCanLaunch(userID, a.getName());
 	}
 }
