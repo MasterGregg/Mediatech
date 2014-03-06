@@ -1,11 +1,18 @@
 package model;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.ResourceBundle;
 
 public class SQLManager 
@@ -56,7 +63,7 @@ public class SQLManager
 		{
 			st = cnx();
 			if(st == null) return -1;
-			result = (ResultSet) st.executeQuery("SELECT id FROM t_users WHERE (name="+login+" AND password="+pwd+")");
+			result = (ResultSet) st.executeQuery("SELECT id FROM t_users WHERE (name='"+login+"' AND password='"+pwd+"')");
 			if(result.last() && result.getRow() == 1) r = result.getInt("id");
 			result.close();
 			st.close();
@@ -74,19 +81,23 @@ public class SQLManager
 		ResultSet result = null;
 		int idAction = -1;
 		boolean ok = false;
+		String req = "";
 		
 		try 
 		{
 			st = cnx();
 			if(st == null) return false;
+			
 			// RECUPERATION ID ACTION
-			result = (ResultSet) st.executeQuery("SELECT id FROM t_actions WHERE name="+actionName);
+			req = "SELECT id FROM t_actions WHERE (name='"+actionName+"')";
+			result = (ResultSet) st.executeQuery(req);
 			if(result.last() && result.getRow() == 1) 
 			{
 				idAction = result.getInt("id");
 				
 				// ON REGARDE SI L'USER PEUT LANCER L'ACTION
-				result = (ResultSet) st.executeQuery("SELECT * FROM t_rights WHERE (id_user="+userID+"+ AND id_action="+idAction+")");
+				req = "SELECT * FROM t_rights WHERE (id_user='"+userID+"' AND id_action='"+idAction+"')";
+				result = (ResultSet) st.executeQuery(req);
 				if(result.last() && result.getRow() == 1) ok = true;
 			}
 			result.close();
@@ -98,170 +109,158 @@ public class SQLManager
 		return ok;
 	}
 	
-	/*public ArrayList<Livre> livres()
+	public boolean addMedia(Media m)
 	{
-		ArrayList<Livre> l = new ArrayList<Livre>();
-		String req = "SELECT * FROM t_livre";	
+		FileInputStream fis = null;
+	    PreparedStatement ps = null;
 		Statement st = null;
-		ResultSet result;		
+		String req = "INSERT INTO t_medias(name, binaryBlob) values (?, ?)";
+		Connection con = null;
 		
 		try 
 		{
 			st = cnx();
-			if(st == null) return l;
-			result = (ResultSet) st.executeQuery(req);
-			while(result.next())
+			if(st == null) return false;
+			con = st.getConnection();
+			
+			con.setAutoCommit(false);
+			File file = m.getLocalFile();  
+			fis = new FileInputStream(file);
+			  
+			ps = con.prepareStatement(req);
+			ps.setString(1, m.getName());
+			System.out.println(m.getName());
+			ps.setBinaryStream(2, fis, (int) file.length());
+			ps.executeUpdate();
+			con.commit();
+			ps.close();
+			fis.close();
+			st.close();
+			
+			/* MAJ ID MEDIA */
+			int id = getIDLastMedia();
+			if(id != -1)
 			{
-				Livre livre = new Livre(Integer.parseInt(result.getString("idLivre")), result.getString("titre"), result.getString("auteur"), result.getString("annee") );
-				l.add(livre);
+				m.setID(id);
+				return true;
+			}
+		} catch (SQLException | IOException e) 
+		{
+			e.printStackTrace();
+		}		
+		
+		return false;
+	}
+	
+	private int getIDLastMedia()
+	{
+		Statement st = null;
+		ResultSet result = null;
+		String req = "";
+		int id = -1;
+		
+		try 
+		{
+			st = cnx();
+			if(st == null) return -1;
+			
+			// RECUPERATION ID 
+			req = "SELECT MAX(id) AS max FROM t_medias";
+			result = (ResultSet) st.executeQuery(req);
+			if(result.last() && result.getRow() == 1)  id = result.getInt("max");
+			result.close();
+			st.close();
+		} catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}				
+		return id;
+	}
+	
+	public HashMap<Integer, String> listMedias()
+	{
+		HashMap<Integer, String> medias = new HashMap<Integer, String>();
+		Statement st = null;
+		ResultSet result = null;
+		String req = "";
+		
+		try 
+		{
+			st = cnx();
+			if(st == null) return medias;
+			
+			// RECUPERATION ID ACTION
+			req = "SELECT id, name FROM t_medias";
+			result = (ResultSet) st.executeQuery(req);
+			while(result.next()) 
+			{
+				int id = result.getInt("id");
+				String name = result.getString("name");
+				medias.put(id, name);
 			}
 			result.close();
 			st.close();
 		} catch (SQLException e) 
 		{
 			e.printStackTrace();
-		}		
-		
-		return l;
-	}*/
+		}				
+		return medias;
+	}
 	
-	/*private String createStringInsert(String tableName, ArrayList<String> params)
+	public File getRessourceFile(int id)
 	{
-		StringBuilder req = new StringBuilder("INSERT INTO "+tableName+" VALUES");	
-		StringBuilder values = new StringBuilder("(");
-		
-		for(int i=0;i<params.size()-1;i++)
-		{
-			values.append("'"+params.get(i)+"', ");
-		}
-		values.append("'"+params.get(params.size()-1)+"'");
-		values.append(")");
-		req.append(values);
-		
-		return req.toString();
-	}*/
-	
-	/*public boolean editLivre(Livre newLivre)
-	{
+		String req;
 		Statement st = null;
-		ResultSet result;		
-		StringBuilder req = new StringBuilder("UPDATE t_livre SET ");
+		ResultSet result;
+		File f = null;
+		
 		try 
 		{
-			req.append("titre='"+newLivre.getTitre()+"', ");
-			req.append("auteur='"+newLivre.getAuteur()+"', ");
-			req.append("annee='"+newLivre.getAnnee()+"'");
-			req.append(" WHERE idLivre='"+newLivre.getIdLivre()+"'");
+			req = "SELECT * FROM t_medias WHERE id='"+id+"'";
 			st = cnx();
-			//System.out.println(req.toString());
-			st.executeUpdate(req.toString());
-			st.close();
-			return true;
-		} catch (SQLException e) 
+			if(st == null) return null;
+			
+			result = st.executeQuery(req);
+		    if(result.last() && result.getRow() == 1) 
+		    {
+			      String name = result.getString("name");
+			      f = new File(System.getProperty("java.io.tmpdir")+File.separator+"name");
+			      FileOutputStream fos = new FileOutputStream(f);
+
+			      byte[] buffer = new byte[1];
+			      InputStream is = result.getBinaryStream("binaryBlob");
+			      while (is.read(buffer) > 0) 
+			      {
+			        fos.write(buffer);
+			      }
+			      fos.close();
+		    }  
+		    result.close();
+		    st.close();
+		} catch (SQLException | IOException e) 
 		{
 			e.printStackTrace();
-		}		
-		return false;
-	}*/
-	
-	/*public boolean addLivre(Livre livre)
+		}
+		return f;
+	}
+
+	public boolean removeMedia(Media media) 
 	{
+		String req;
 		Statement st = null;
-		ResultSet result;		
-		ArrayList<String> params = new ArrayList<String>();
 		
 		try 
 		{
-			params.add(livre.getTitre());
-			params.add(livre.getAuteur());
-			params.add(livre.getAnnee());
 			st = cnx();
-			String req = createStringInsert("t_livre", params);
+			if(st == null) return false;	
+			req = "DELETE FROM t_medias WHERE id="+media.getID();
 			st.executeUpdate(req);
 			st.close();
 			return true;
 		} catch (SQLException e) 
 		{
 			e.printStackTrace();
-		}		
+		}				
 		return false;
-	}*/
-	
-	/*public void printLivres()
-	{
-		ArrayList<Livre> livres_bdd = livres();
-		for(Livre l: livres_bdd)
-		{
-			System.out.println(l.getTitre()+ " "+l.getAuteur()+" "+l.getAnnee());
-		}
-	}*/
-	
-	/*public static void main(String [] args)
-	{
-		AccesBDD acc = new AccesBDD();
-		ArrayList<Livre> livres_bdd = acc.livres();
-		
-		acc.printLivres();
-		
-		Livre languageC = livres_bdd.get(0);
-		languageC.setAuteur("Mr");
-		acc.editLivre(languageC);
-		System.out.println();
-		acc.printLivres();
-		
-		/*System.out.println(acc.saveLivre(new Livre("Tous a poil", "Greg", "2005")));;
-		
-		livres_bdd = acc.livres();
-		for(Livre l: livres_bdd)
-		{
-			System.out.println(l.getIdLivre()+" "+l.getTitre()+ " "+l.getAuteur()+" "+l.getAnnee());
-		}
-		*/
-		
-//		String url, usr, pwd, req;
-//		Connection cnx;
-//		
-//		
-//		
-//		
-//		url = "jdbc:mysql://localhost/db_master1";
-//		usr = "root";
-//		pwd = "";
-//		
-//		
-//		try 
-//		{		
-//			cnx = (Connection) DriverManager.getConnection(url, usr, pwd);
-//			Statement st = (Statement) cnx.createStatement();
-//			
-//			/* LISTER LIVRE  */
-//			System.out.println("\t\tListe des livres");
-//			req = "SELECT * FROM t_livre";	
-//			ResultSet result = (ResultSet) st.executeQuery(req);		
-//			while(result.next())
-//			{
-//				System.out.println(result.getString("titre"));
-//			}
-//					
-////			/* ENREGISTRER UN LIVRE */
-////			req = "INSERT INTO t_livre VALUES('3', 'Ma vie de fou', 'toto', '2001')";	
-////			st.executeUpdate(req);	
-//			
-//			/* LISTER MOT CLES  */
-//			System.out.println("\n\n\t\tMot cles du livre id 1");
-//			req = "SELECT idMotcle FROM t_livre_motcle WHERE idLivre='1'";	
-//			result = (ResultSet) st.executeQuery(req);		
-//			while(result.next())
-//			{
-//				System.out.println(result.getString("idMotcle"));
-//			}
-//			
-//			/* LISTER MOT CLE D'UN LIBRE */
-//			int id = 1;
-//			
-//		} catch (SQLException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//	}
+	}
 }

@@ -1,7 +1,7 @@
 package model;
 
 public abstract class Action {
-	private String name;
+	protected String name;
 	
 	public Action(String a)
 	{
@@ -13,5 +13,5 @@ public abstract class Action {
 		return name;
 	}
 	
-	public abstract void start();
+	protected abstract void start(SQLManager connector);
 }
